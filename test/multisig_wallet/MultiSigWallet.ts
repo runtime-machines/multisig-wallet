@@ -27,10 +27,9 @@ describe("MultiSigWallet contract", function () {
   });
 
   it("can receive funds", async function () {
-    expect(await this.wallet.balance()).to.equal(1000);
+    expect(await ethers.provider.getBalance(this.wallet.address)).to.equal(1000);
     await this.wallet.deposit({ value: 1000 });
     expect(await ethers.provider.getBalance(this.wallet.address)).to.equal(2000);
-    expect(await this.wallet.balance()).to.equal(2000);
   });
 
   it("shouldn't allow payments from non owners", async function () {
@@ -82,7 +81,7 @@ describe("MultiSigWallet contract", function () {
     const encodedCall = iface.encodeFunctionData("setPower", [3]);
 
     expect(await power.pow(2)).to.equal(4);
-    const ret = await this.wallet.connect(this.signers[1]).externalCall(power.address, encodedCall);
+    await this.wallet.connect(this.signers[1]).externalCall(power.address, encodedCall);
 
     expect(await power.pow(2)).to.equal(8);
   });

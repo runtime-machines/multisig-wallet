@@ -11,16 +11,13 @@ struct Payment {
 
 contract MultiSigWallet {
     address[] public owners;
-    uint public balance;
 
     constructor(address[] memory _owners) {
-        require(_owners.length >= 1);
+        require(_owners.length >= 1, "Must have at least one owner");
         owners = _owners;
     }
 
-    function deposit() external payable {
-        balance += msg.value;
-    }
+    function deposit() external payable {}
 
     modifier onlyAnOwner() {
         bool exists = false;
@@ -43,14 +40,14 @@ contract MultiSigWallet {
         uint paymentId = paymentCounter++;
         paymentsWaiting[paymentId] = Payment(_amount, _to, true);
 
-        return (_pay_approveAndCheck(paymentId), paymentId);
+        return (_paymentApproveAndCheck(paymentId), paymentId);
     }
 
     function payApprove(uint _paymentId) external onlyAnOwner returns (bool) {
-        return _pay_approveAndCheck(_paymentId);
+        return _paymentApproveAndCheck(_paymentId);
     }
 
-    function _pay_approveAndCheck(uint _paymentId) internal returns (bool) {
+    function _paymentApproveAndCheck(uint _paymentId) internal returns (bool) {
         require(paymentsWaiting[_paymentId].exists, "No waiting payments with this id");
         Payment memory payment = paymentsWaiting[_paymentId];
 
@@ -64,7 +61,6 @@ contract MultiSigWallet {
 
         if (paymentsApprovals[_paymentId].length == owners.length) {
             payment.to.transfer(payment.amount);
-            balance -= payment.amount;
             delete paymentsWaiting[_paymentId];
             delete paymentsApprovals[_paymentId];
             return true;

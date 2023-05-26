@@ -1,6 +1,5 @@
+import { expect } from "chai";
 import { ethers } from "hardhat";
-
-const { expect } = require("chai");
 
 describe("Power contract", function () {
   it("should compute power", async function () {
