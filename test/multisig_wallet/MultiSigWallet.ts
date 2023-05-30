@@ -19,17 +19,22 @@ describe("MultiSigWallet contract", function () {
       signers[3].address,
     ]);
     await wallet.deployed();
-    await wallet.deposit({ value: 1000 });
 
     this.wallet = wallet;
     this.admin = admin;
     this.signers = signers;
+
+    const powerFactory = await ethers.getContractFactory("Power");
+    const power = await powerFactory.deploy(2);
+    await power.deployed();
+
+    this.power = power;
   });
 
   it("can receive funds", async function () {
-    expect(await ethers.provider.getBalance(this.wallet.address)).to.equal(1000);
+    expect(await ethers.provider.getBalance(this.wallet.address)).to.equal(0);
     await this.wallet.deposit({ value: 1000 });
-    expect(await ethers.provider.getBalance(this.wallet.address)).to.equal(2000);
+    expect(await ethers.provider.getBalance(this.wallet.address)).to.equal(1000);
   });
 
   it("shouldn't allow payments from non owners", async function () {
@@ -43,6 +48,7 @@ describe("MultiSigWallet contract", function () {
     const initialBalance = await receiver.getBalance();
     const transfer_amount = 1000;
 
+    await this.wallet.deposit({ value: 1000 });
     await this.wallet.connect(this.signers[1]).pay(transfer_amount, receiver.address);
     expect(await receiver.getBalance()).to.equal(initialBalance);
 
@@ -72,17 +78,29 @@ describe("MultiSigWallet contract", function () {
     );
   });
 
-  it("should make external call with no return value", async function () {
-    const powerFactory = await ethers.getContractFactory("Power");
-    const power = await powerFactory.deploy(2);
-    await power.deployed();
-
+  it("should make external call", async function () {
     const iface = new ethers.utils.Interface(["function setPower(uint _power)"]);
     const encodedCall = iface.encodeFunctionData("setPower", [3]);
 
-    expect(await power.pow(2)).to.equal(4);
-    await this.wallet.connect(this.signers[1]).externalCall(power.address, encodedCall);
+    expect(await this.power.pow(2)).to.equal(4);
+    await this.wallet.connect(this.signers[1]).externalCall(this.power.address, encodedCall, 0);
+    expect(await this.power.pow(2)).to.equal(8);
+  });
 
-    expect(await power.pow(2)).to.equal(8);
+  it("should make payable external call", async function () {
+    const iface = new ethers.utils.Interface(["function payableSetPower(uint _power)"]);
+    const encodedCall = iface.encodeFunctionData("payableSetPower", [3]);
+
+    await this.wallet.deposit({ value: ethers.utils.parseUnits("2", "ether") });
+
+    expect(await this.power.pow(2)).to.equal(4);
+    await this.wallet
+      .connect(this.signers[1])
+      .externalCall(this.power.address, encodedCall, ethers.utils.parseUnits("1", "ether"));
+    expect(await this.power.pow(2)).to.equal(8);
+
+    await expect(
+      this.wallet.connect(this.signers[1]).externalCall(this.power.address, encodedCall, 123),
+    ).to.be.revertedWith("Price is 1 ether");
   });
 });

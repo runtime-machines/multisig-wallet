@@ -71,12 +71,23 @@ contract MultiSigWallet {
 
     // TODO:
     // - make it work with multiple signers
-    // - return data?
-    // - payable?
+    mapping(uint => Payment) extCallWaiting;
+    mapping(uint => address[]) extCallApprovals;
+    uint extCallCounter = 0;
+
     function externalCall(
         address _contract,
-        bytes memory _call
-    ) external onlyAnOwner returns (bool success, bytes memory returnedData) {
-        (success, returnedData) = _contract.call{ value: 0 }(_call);
+        bytes memory _call,
+        uint _value
+    ) external onlyAnOwner returns (bytes memory) {
+        (bool success, bytes memory data) = _contract.call{ value: _value }(_call);
+        if (success == false) {
+            // Correctly propagate reverts from called function
+            assembly {
+                revert(add(data, 32), mload(data))
+            }
+        }
+
+        return data;
     }
 }
