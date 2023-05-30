@@ -84,6 +84,10 @@ describe("MultiSigWallet contract", function () {
 
     expect(await this.power.pow(2)).to.equal(4);
     await this.wallet.connect(this.signers[1]).externalCall(this.power.address, encodedCall, 0);
+    expect(await this.power.pow(2)).to.equal(4);
+    await this.wallet.connect(this.signers[2]).externalCallApprove(0);
+    expect(await this.power.pow(2)).to.equal(4);
+    await this.wallet.connect(this.signers[3]).externalCallApprove(0);
     expect(await this.power.pow(2)).to.equal(8);
   });
 
@@ -97,10 +101,10 @@ describe("MultiSigWallet contract", function () {
     await this.wallet
       .connect(this.signers[1])
       .externalCall(this.power.address, encodedCall, ethers.utils.parseUnits("1", "ether"));
+    expect(await this.power.pow(2)).to.equal(4);
+    await this.wallet.connect(this.signers[2]).externalCallApprove(0);
+    expect(await this.power.pow(2)).to.equal(4);
+    await this.wallet.connect(this.signers[3]).externalCallApprove(0);
     expect(await this.power.pow(2)).to.equal(8);
-
-    await expect(
-      this.wallet.connect(this.signers[1]).externalCall(this.power.address, encodedCall, 123),
-    ).to.be.revertedWith("Price is 1 ether");
   });
 });

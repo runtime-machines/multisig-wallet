@@ -9,6 +9,13 @@ struct Payment {
     bool exists;
 }
 
+struct ExternalCall {
+    address _contract;
+    bytes _call;
+    uint _value;
+    bool exists;
+}
+
 contract MultiSigWallet {
     address[] public owners;
 
@@ -40,14 +47,14 @@ contract MultiSigWallet {
         uint paymentId = paymentCounter++;
         paymentsWaiting[paymentId] = Payment(_amount, _to, true);
 
-        return (_paymentApproveAndCheck(paymentId), paymentId);
+        return (_paymentApproveAndPerform(paymentId), paymentId);
     }
 
     function payApprove(uint _paymentId) external onlyAnOwner returns (bool) {
-        return _paymentApproveAndCheck(_paymentId);
+        return _paymentApproveAndPerform(_paymentId);
     }
 
-    function _paymentApproveAndCheck(uint _paymentId) internal returns (bool) {
+    function _paymentApproveAndPerform(uint _paymentId) internal returns (bool) {
         require(paymentsWaiting[_paymentId].exists, "No waiting payments with this id");
         Payment memory payment = paymentsWaiting[_paymentId];
 
@@ -69,25 +76,52 @@ contract MultiSigWallet {
         return false;
     }
 
-    // TODO:
-    // - make it work with multiple signers
-    mapping(uint => Payment) extCallWaiting;
-    mapping(uint => address[]) extCallApprovals;
-    uint extCallCounter = 0;
+    mapping(uint => ExternalCall) externalCallsWaiting;
+    mapping(uint => address[]) externalCallsApprovals;
+    uint externalCallCounter = 0;
 
     function externalCall(
         address _contract,
         bytes memory _call,
         uint _value
-    ) external onlyAnOwner returns (bytes memory) {
-        (bool success, bytes memory data) = _contract.call{ value: _value }(_call);
-        if (success == false) {
-            // Correctly propagate reverts from called function
-            assembly {
-                revert(add(data, 32), mload(data))
+    ) external onlyAnOwner returns (bool, bytes memory, uint) {
+        uint externalCallId = externalCallCounter++;
+        externalCallsWaiting[externalCallId] = ExternalCall(_contract, _call, _value, true);
+
+        (bool success, bytes memory data) = _extCallApproveAndPerform(externalCallId);
+        return (success, data, externalCallId);
+    }
+
+    function externalCallApprove(uint _extCallId) external onlyAnOwner returns (bool, bytes memory) {
+        return _extCallApproveAndPerform(_extCallId);
+    }
+
+    function _extCallApproveAndPerform(uint _externalCallId) internal returns (bool, bytes memory) {
+        require(externalCallsWaiting[_externalCallId].exists, "No waiting calls with this id");
+        ExternalCall memory extCall = externalCallsWaiting[_externalCallId];
+
+        for (uint i = 0; i < externalCallsApprovals[_externalCallId].length; i++) {
+            if (externalCallsApprovals[_externalCallId][i] == msg.sender) {
+                revert("Already approved");
             }
         }
 
-        return data;
+        externalCallsApprovals[_externalCallId].push(msg.sender);
+
+        if (externalCallsApprovals[_externalCallId].length == owners.length) {
+            (bool success, bytes memory data) = extCall._contract.call{ value: extCall._value }(extCall._call);
+            if (success == false) {
+                // Correctly propagate reverts from called function
+                assembly {
+                    revert(add(data, 32), mload(data))
+                }
+            }
+
+            delete externalCallsWaiting[_externalCallId];
+            delete externalCallsApprovals[_externalCallId];
+            return (success, data);
+        }
+
+        return (false, "");
     }
 }
