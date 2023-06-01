@@ -1,6 +1,5 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { sign } from "crypto";
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 
@@ -83,7 +82,7 @@ describe("MultiSigWalletSchnorr contract", function () {
     await expect(
       this.walletSchnorr.pay(1000, this.signers[1].address, [BigNumber.from("1"), BigNumber.from("2"), s_tot]),
     ).to.be.revertedWith("Invalid signature");
-    expect(await this.walletSchnorr.pay(amount, this.signers[1].address, [...R_tot, s_tot])).not.to.be.reverted;
+    await expect(this.walletSchnorr.pay(amount, this.signers[1].address, [...R_tot, s_tot])).not.to.be.reverted;
 
     expect(await ethers.provider.getBalance(this.signers[1].address))
       .greaterThan(ethers.utils.parseEther("10999"))

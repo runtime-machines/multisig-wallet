@@ -67,9 +67,6 @@ devDependencies:
   dotenv:
     specifier: ^16.0.3
     version: 16.0.3
-  elliptic:
-    specifier: ^6.5.4
-    version: 6.5.4
   eslint:
     specifier: ^8.28.0
     version: 8.36.0
