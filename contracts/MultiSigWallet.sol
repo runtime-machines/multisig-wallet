@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity >=0.8.4;
+pragma solidity >=0.8.17;
 
 import { console } from "hardhat/console.sol";
 
@@ -10,9 +10,9 @@ struct Payment {
 }
 
 struct ExternalCall {
-    address _contract;
-    bytes _call;
-    uint _value;
+    address contractAddress;
+    bytes encodedCall;
+    uint value;
     bool exists;
 }
 
@@ -109,7 +109,9 @@ contract MultiSigWallet {
         externalCallsApprovals[_externalCallId].push(msg.sender);
 
         if (externalCallsApprovals[_externalCallId].length == owners.length) {
-            (bool success, bytes memory data) = extCall._contract.call{ value: extCall._value }(extCall._call);
+            (bool success, bytes memory data) = extCall.contractAddress.call{ value: extCall.value }(
+                extCall.encodedCall
+            );
             if (success == false) {
                 // Correctly propagate reverts from called function
                 assembly {
