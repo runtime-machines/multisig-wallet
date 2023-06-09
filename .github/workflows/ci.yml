@@ -28,6 +28,9 @@ jobs:
           cache: "pnpm"
           node-version: "lts/*"
 
+      - name: "Install truffle"
+        run: "pnpm install -g truffle"
+
       - name: "Install the dependencies"
         run: "pnpm install"
 
