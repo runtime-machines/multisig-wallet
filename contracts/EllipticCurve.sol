@@ -1,10 +1,9 @@
+// From https://github.com/witnet/elliptic-curve-solidity
+// They're currently working on updating solidity pragma
+// see PR #35
+
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.17;
-
-// From https://github.com/witnet/elliptic-curve-solidity
-// pnpm can't install due to some issue with the postinstall script
-// and solidity version is incompatible.
-// Need to fork/rewrite
 
 /**
  * @title Elliptic Curve Library

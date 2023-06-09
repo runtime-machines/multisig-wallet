@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.17;
 
-import "./EllipticCurve.sol";
+import { EllipticCurve } from "./EllipticCurve.sol";
 
 contract Secp256k1 {
     uint256 public constant GX = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798;

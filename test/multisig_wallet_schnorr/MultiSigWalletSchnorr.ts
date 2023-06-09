@@ -4,18 +4,16 @@ import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 
 import { MultiSigWalletSchnorr } from "../../types/MultiSigWalletSchnorr";
-import { Secp256k1Operations } from "../../types/Secp256k1Operations";
+import { Secp256k1 } from "../../types/Secp256k1";
 import { MultiSigWalletSchnorr__factory } from "../../types/factories/MultiSigWalletSchnorr__factory";
-import { Secp256k1Operations__factory } from "../../types/factories/Secp256k1Operations__factory";
+import { Secp256k1__factory } from "../../types/factories/Secp256k1__factory";
 
 describe("MultiSigWalletSchnorr contract", function () {
   beforeEach(async function () {
     const signers: SignerWithAddress[] = await ethers.getSigners();
 
-    const secp256k1Factory: Secp256k1Operations__factory = <Secp256k1Operations__factory>(
-      await ethers.getContractFactory("Secp256k1Operations")
-    );
-    const secp256k1: Secp256k1Operations = await secp256k1Factory.deploy();
+    const secp256k1Factory: Secp256k1__factory = <Secp256k1__factory>await ethers.getContractFactory("Secp256k1");
+    const secp256k1: Secp256k1 = await secp256k1Factory.deploy();
     await secp256k1.deployed();
 
     // Keys setup
