@@ -4,14 +4,14 @@ pragma solidity >=0.8.17;
 import { Secp256k1 } from "./Secp256k1.sol";
 
 contract MultiSigWalletSchnorr is Secp256k1 {
-    uint256[2] public X;
+    uint[2] public X;
 
     // We use counters so that it is not possible
     // to reuse the same signature twice
     uint paymentCounter = 0;
     uint extCallCounter = 0;
 
-    constructor(uint256[2][] memory _owners) {
+    constructor(uint[2][] memory _owners) {
         require(_owners.length >= 1, "Must have at least one owner");
 
         X = [_owners[0][0], _owners[0][1]];
@@ -22,10 +22,9 @@ contract MultiSigWalletSchnorr is Secp256k1 {
 
     function deposit() external payable {}
 
-    function pay(uint _amount, address payable _to, uint256[3] memory _signature) external {
-        bytes memory m = abi.encode("pay", _amount, _to, paymentCounter);
+    function pay(uint _amount, address payable _to, uint[3] memory _signature) external {
+        bytes memory m = abi.encode("pay", _amount, _to, paymentCounter++);
         require(_verifySignature(m, _signature), "Invalid signature");
-        paymentCounter++;
         _to.transfer(_amount);
     }
 
@@ -33,11 +32,10 @@ contract MultiSigWalletSchnorr is Secp256k1 {
         address _contract,
         bytes memory _call,
         uint _value,
-        uint256[3] memory _signature
+        uint[3] memory _signature
     ) external returns (bool, bytes memory) {
-        bytes memory m = abi.encode("extCall", _contract, _call, _value, extCallCounter);
+        bytes memory m = abi.encode("extCall", _contract, _call, _value, extCallCounter++);
         require(_verifySignature(m, _signature), "Invalid signature");
-        extCallCounter++;
 
         (bool success, bytes memory data) = _contract.call{ value: _value }(_call);
         if (success == false) {
@@ -50,15 +48,15 @@ contract MultiSigWalletSchnorr is Secp256k1 {
         return (success, data);
     }
 
-    function _verifySignature(bytes memory _m, uint256[3] memory _signature) internal view returns (bool) {
+    function _verifySignature(bytes memory _m, uint[3] memory _signature) internal view returns (bool) {
         bytes32 c = keccak256(abi.encode(X, _signature[0], _signature[1], _m));
 
-        uint256[2] memory gs;
-        uint256[2] memory cx;
-        uint256[2] memory rcx;
+        uint[2] memory gs;
+        uint[2] memory cx;
+        uint[2] memory rcx;
 
         (gs[0], gs[1]) = ecMul(_signature[2], GX, GY);
-        (cx[0], cx[1]) = ecMul(uint256(c), X[0], X[1]);
+        (cx[0], cx[1]) = ecMul(uint(c), X[0], X[1]);
         (rcx[0], rcx[1]) = ecAdd(cx[0], cx[1], _signature[0], _signature[1]);
 
         return gs[0] == rcx[0] && gs[1] == rcx[1];
