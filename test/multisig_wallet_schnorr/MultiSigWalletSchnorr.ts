@@ -51,7 +51,6 @@ describe("MultiSigWalletSchnorr contract", function () {
   let PKs: [BigNumber, BigNumber][];
   let SKs: BigNumber[];
   let G: [BigNumber, BigNumber];
-  let N: BigNumber;
   const abiEncoder = new ethers.utils.AbiCoder();
 
   beforeEach(async function () {
@@ -63,7 +62,6 @@ describe("MultiSigWalletSchnorr contract", function () {
 
     // Keys setup
     G = await secp256k1.G();
-    N = await secp256k1.N();
     SKs = Array.from(Array(N_owners), () => BigNumber.from(ethers.utils.randomBytes(32)));
     PKs = await Promise.all(SKs.map(async (sk) => await secp256k1.ecMul(sk, ...G)));
 
