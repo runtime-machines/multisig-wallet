@@ -11,13 +11,8 @@ contract MultiSigWalletSchnorr is Secp256k1 {
     uint paymentCounter = 0;
     uint extCallCounter = 0;
 
-    constructor(uint[2][] memory _owners) {
-        require(_owners.length >= 1, "Must have at least one owner");
-
-        X = [_owners[0][0], _owners[0][1]];
-        for (uint i = 1; i < _owners.length; i++) {
-            (X[0], X[1]) = ecAdd(X[0], X[1], _owners[i][0], _owners[i][1]);
-        }
+    constructor(uint[2] memory _X) {
+        X = _X;
     }
 
     function deposit() external payable {}

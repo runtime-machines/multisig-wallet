@@ -3,7 +3,6 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 
-// import { abi as Secp256k1_ABI } from "../../artifacts/contracts/Secp256k1.sol/Secp256k1.json";
 import { MultiSigWalletSchnorr } from "../../types/MultiSigWalletSchnorr";
 import { Power } from "../../types/Power";
 import { Secp256k1 } from "../../types/Secp256k1";
@@ -11,9 +10,17 @@ import { MultiSigWalletSchnorr__factory } from "../../types/factories/MultiSigWa
 import { Power__factory } from "../../types/factories/Power__factory";
 import { Secp256k1__factory } from "../../types/factories/Secp256k1__factory";
 
-async function create_signature(
+async function pk_naive(secp256k1: Secp256k1, PKs: [BigNumber, BigNumber][]) {
+  let X: [BigNumber, BigNumber] = PKs[0];
+  for (let i = 1; i < PKs.length; i++) {
+    X = await secp256k1.ecAdd(...X, ...PKs[i]);
+  }
+  return X;
+}
+
+async function sign_naive(
   secp256k1: Secp256k1,
-  PKs: [BigNumber, BigNumber][],
+  X: [BigNumber, BigNumber],
   SKs: BigNumber[],
   m: string,
 ): Promise<[[BigNumber, BigNumber], BigNumber]> {
@@ -27,11 +34,6 @@ async function create_signature(
   let R_tot = R[0];
   for (let i = 1; i < R.length; i++) {
     R_tot = await secp256k1.ecAdd(...R_tot, ...R[i]);
-  }
-
-  let X: [BigNumber, BigNumber] = PKs[0];
-  for (let i = 1; i < R.length; i++) {
-    X = await secp256k1.ecAdd(...X, ...PKs[i]);
   }
 
   const c = ethers.utils.keccak256(encoder.encode(["uint[2]", "uint", "uint", "bytes"], [X, R_tot[0], R_tot[1], m]));
@@ -51,9 +53,9 @@ describe("MultiSigWalletSchnorr contract", function () {
   let PKs: [BigNumber, BigNumber][];
   let SKs: BigNumber[];
   let G: [BigNumber, BigNumber];
-  const abiEncoder = new ethers.utils.AbiCoder();
+  let X_naive: [BigNumber, BigNumber];
 
-  beforeEach(async function () {
+  before(async function () {
     signers = await ethers.getSigners();
 
     const secp256k1Factory: Secp256k1__factory = <Secp256k1__factory>await ethers.getContractFactory("Secp256k1");
@@ -64,12 +66,13 @@ describe("MultiSigWalletSchnorr contract", function () {
     G = await secp256k1.G();
     SKs = Array.from(Array(N_owners), () => BigNumber.from(ethers.utils.randomBytes(32)));
     PKs = await Promise.all(SKs.map(async (sk) => await secp256k1.ecMul(sk, ...G)));
+    X_naive = await pk_naive(secp256k1, PKs);
 
     // Wallet setup
     const walletFactory: MultiSigWalletSchnorr__factory = <MultiSigWalletSchnorr__factory>(
       await ethers.getContractFactory("MultiSigWalletSchnorr")
     );
-    wallet = await walletFactory.deploy(PKs);
+    wallet = await walletFactory.deploy(X_naive);
     await wallet.deployed();
 
     // Power setup
@@ -85,10 +88,12 @@ describe("MultiSigWalletSchnorr contract", function () {
   });
 
   it("should allow payments approved by all owners", async function () {
-    const amount = ethers.utils.parseEther("1000");
-
-    const m = abiEncoder.encode(["string", "uint", "address", "uint"], ["pay", amount, signers[1].address, 0]);
-    const [R, s]: [[BigNumber, BigNumber], BigNumber] = await create_signature(secp256k1, PKs, SKs, m);
+    const amount = 1000;
+    const m = new ethers.utils.AbiCoder().encode(
+      ["string", "uint", "address", "uint"],
+      ["pay", amount, signers[1].address, 0],
+    );
+    const [R, s]: [[BigNumber, BigNumber], BigNumber] = await sign_naive(secp256k1, X_naive, SKs, m);
 
     expect(await ethers.provider.getBalance(signers[1].address))
       .greaterThan(ethers.utils.parseEther("9999"))
@@ -96,26 +101,23 @@ describe("MultiSigWalletSchnorr contract", function () {
 
     await wallet.deposit({ value: amount });
     await expect(
-      wallet.pay(1000, signers[1].address, [BigNumber.from("1"), BigNumber.from("2"), s]),
+      wallet.pay(amount, signers[1].address, [BigNumber.from("1"), BigNumber.from("2"), s]),
     ).to.be.revertedWith("Invalid signature");
     await expect(wallet.pay(amount, signers[1].address, [...R, s])).not.to.be.reverted;
 
     expect(await ethers.provider.getBalance(signers[1].address))
-      .greaterThan(ethers.utils.parseEther("10999"))
-      .lessThanOrEqual(ethers.utils.parseEther("11000"));
+      .greaterThan(ethers.utils.parseEther("10000").add(amount).sub(ethers.utils.parseEther("1")))
+      .lessThanOrEqual(ethers.utils.parseEther("10000").add(amount));
   });
 
   it("should allow external calls all owners", async function () {
-    const iface = new ethers.utils.Interface(["function payableSetPower(uint _power)"]);
-    const encodedCall = iface.encodeFunctionData("payableSetPower", [3]);
-    const amount = ethers.utils.parseEther("1");
-
-    const m = abiEncoder.encode(
+    const amount: BigNumber = ethers.utils.parseEther("1");
+    const encodedCall = power.interface.encodeFunctionData("payableSetPower", [3]);
+    const m = new ethers.utils.AbiCoder().encode(
       ["string", "address", "bytes", "uint", "uint"],
       ["extCall", power.address, encodedCall, amount, 0],
     );
-
-    const [R, s]: [[BigNumber, BigNumber], BigNumber] = await create_signature(secp256k1, PKs, SKs, m);
+    const [R, s]: [[BigNumber, BigNumber], BigNumber] = await sign_naive(secp256k1, X_naive, SKs, m);
 
     await wallet.deposit({ value: amount });
     expect(await power.pow(2)).to.equal(4);
