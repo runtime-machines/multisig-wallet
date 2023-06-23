@@ -34,7 +34,7 @@ export async function sign_musig(
 
   const a = PKs.map((pk) => ethers.utils.keccak256(encoder.encode([`uint[2][${PKs.length}]`, "uint[2]"], [PKs, pk])));
   const c = ethers.utils.keccak256(encoder.encode(["uint[2]", "uint", "uint", "bytes"], [X, R_tot[0], R_tot[1], m]));
-  let s = SKs.map((sk, i) => sk.mul(c).mul(a[i]).add(r[i]).mod(N));
+  const s = SKs.map((sk, i) => sk.mul(c).mul(a[i]).add(r[i]).mod(N));
   const s_tot = s.reduce((a, b) => a.add(b)).mod(N);
 
   return [R_tot, s_tot];
