@@ -4,8 +4,8 @@ import { ethers } from "hardhat";
 import { Secp256k1 } from "../../types/Secp256k1";
 
 export async function pk_naive(secp256k1: Secp256k1, PKs: [BigNumber, BigNumber][]) {
-  let X: [BigNumber, BigNumber] = PKs[0];
-  for (let i = 1; i < PKs.length; i++) {
+  let X: [BigNumber, BigNumber] = [BigNumber.from(0), BigNumber.from(0)];
+  for (let i = 0; i < PKs.length; i++) {
     X = await secp256k1.ecAdd(...X, ...PKs[i]);
   }
   return X;
@@ -15,6 +15,7 @@ export async function sign_naive(
   secp256k1: Secp256k1,
   X: [BigNumber, BigNumber],
   SKs: BigNumber[],
+  PKs: [BigNumber, BigNumber][],
   m: string,
 ): Promise<[[BigNumber, BigNumber], BigNumber]> {
   const encoder = new ethers.utils.AbiCoder();

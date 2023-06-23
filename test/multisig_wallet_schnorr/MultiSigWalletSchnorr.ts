@@ -9,6 +9,7 @@ import { Secp256k1 } from "../../types/Secp256k1";
 import { MultiSigWalletSchnorr__factory } from "../../types/factories/MultiSigWalletSchnorr__factory";
 import { Power__factory } from "../../types/factories/Power__factory";
 import { Secp256k1__factory } from "../../types/factories/Secp256k1__factory";
+import { pk_musig, sign_musig } from "./musig_schnorr";
 import { pk_naive, sign_naive } from "./naive_schnorr";
 
 describe("MultiSigWalletSchnorr contract", function () {
@@ -34,10 +35,10 @@ describe("MultiSigWalletSchnorr contract", function () {
   });
 
   [
-    { title: "naive multi-signature scheme", sign_fn: sign_naive, pk_fn: pk_naive },
-    // { title: "musig scheme", sign_fn: sign_musig, pk_fn: pk_musig },
-  ].forEach((params) =>
-    describe(params.title, async function () {
+    { title: "Naive multi-signature scheme", sign_fn: sign_naive, pk_fn: pk_naive },
+    { title: "MuSig scheme", sign_fn: sign_musig, pk_fn: pk_musig },
+  ].forEach(({ title, pk_fn, sign_fn }) =>
+    describe(title, async function () {
       const amount = ethers.utils.parseEther("1");
       let payment_signature: [[BigNumber, BigNumber], BigNumber];
       let encodedCall: string;
@@ -48,7 +49,7 @@ describe("MultiSigWalletSchnorr contract", function () {
 
       before(async function () {
         const encoder = new ethers.utils.AbiCoder();
-        X = await params.pk_fn(secp256k1, PKs);
+        X = await pk_fn(secp256k1, PKs);
 
         // Wallet setup
         const walletFactory: MultiSigWalletSchnorr__factory = <MultiSigWalletSchnorr__factory>(
@@ -63,19 +64,21 @@ describe("MultiSigWalletSchnorr contract", function () {
         await power.deployed();
 
         // Signature for payments
-        payment_signature = await params.sign_fn(
+        payment_signature = await sign_fn(
           secp256k1,
           X,
           SKs,
+          PKs,
           encoder.encode(["string", "uint", "address", "uint"], ["pay", amount, signers[1].address, 0]),
         );
 
         // Signature for external call
         encodedCall = power.interface.encodeFunctionData("payableSetPower", [3]);
-        external_call_signature = await params.sign_fn(
+        external_call_signature = await sign_fn(
           secp256k1,
           X,
           SKs,
+          PKs,
           new ethers.utils.AbiCoder().encode(
             ["string", "address", "bytes", "uint", "uint"],
             ["extCall", power.address, encodedCall, amount, 0],
