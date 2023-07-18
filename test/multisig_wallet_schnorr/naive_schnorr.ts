@@ -19,7 +19,8 @@ export async function sign_naive(
   m: string,
 ): Promise<[[BigNumber, BigNumber], BigNumber]> {
   const encoder = new ethers.utils.AbiCoder();
-  const G: [BigNumber, BigNumber] = await secp256k1.G();
+  const G: [BigNumber, BigNumber] = [await secp256k1.GX(), await secp256k1.GY()];
+
   const N: BigNumber = await secp256k1.N();
 
   const r = SKs.map(() => ethers.utils.randomBytes(32));

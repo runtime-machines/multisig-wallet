@@ -29,7 +29,7 @@ describe("MultiSigWalletSchnorr contract", function () {
     await secp256k1.deployed();
 
     // Keys setup
-    G = await secp256k1.G();
+    G = [await secp256k1.GX(), await secp256k1.GY()];
     SKs = Array.from(Array(N_owners), () => BigNumber.from(ethers.utils.randomBytes(32)));
     PKs = await Promise.all(SKs.map(async (sk) => await secp256k1.ecMul(sk, ...G)));
   });
@@ -81,7 +81,7 @@ describe("MultiSigWalletSchnorr contract", function () {
           PKs,
           new ethers.utils.AbiCoder().encode(
             ["string", "address", "bytes", "uint", "uint"],
-            ["extCall", power.address, encodedCall, amount, 0],
+            ["extCall", power.address, encodedCall, amount, 1],
           ),
         );
       });

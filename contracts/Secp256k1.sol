@@ -18,8 +18,4 @@ contract Secp256k1 {
     function ecAdd(uint256 _x1, uint256 _y1, uint256 _x2, uint256 _y2) public pure returns (uint256, uint256) {
         return EllipticCurve.ecAdd(_x1, _y1, _x2, _y2, AA, PP);
     }
-
-    function G() public pure returns (uint256, uint256) {
-        return (GX, GY);
-    }
 }

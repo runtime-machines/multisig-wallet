@@ -6,10 +6,9 @@ import { Secp256k1 } from "./Secp256k1.sol";
 contract MultiSigWalletSchnorr is Secp256k1 {
     uint[2] public X;
 
-    // We use counters so that it is not possible
-    // to reuse the same signature twice
-    uint paymentCounter = 0;
-    uint extCallCounter = 0;
+    // We use a counter to univoquely identify transactions
+    // so that the same signature can't be reused.
+    uint txCounter = 0;
 
     constructor(uint[2] memory _X) {
         X = _X;
@@ -18,7 +17,7 @@ contract MultiSigWalletSchnorr is Secp256k1 {
     function deposit() external payable {}
 
     function pay(uint _amount, address payable _to, uint[3] memory _signature) external {
-        bytes memory m = abi.encode("pay", _amount, _to, paymentCounter++);
+        bytes memory m = abi.encode("pay", _amount, _to, txCounter++);
         require(_verifySignature(m, _signature), "Invalid signature");
         _to.transfer(_amount);
     }
@@ -29,7 +28,7 @@ contract MultiSigWalletSchnorr is Secp256k1 {
         uint _value,
         uint[3] memory _signature
     ) external returns (bool, bytes memory) {
-        bytes memory m = abi.encode("extCall", _contract, _call, _value, extCallCounter++);
+        bytes memory m = abi.encode("extCall", _contract, _call, _value, txCounter++);
         require(_verifySignature(m, _signature), "Invalid signature");
 
         (bool success, bytes memory data) = _contract.call{ value: _value }(_call);
